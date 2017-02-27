@@ -1,0 +1,492 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Python inline_table Module API Reference &#8212; Python inline_table module  documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-inline_table">
+<span id="python-inline-table-module-api-reference"></span><h1>Python inline_table Module API Reference<a class="headerlink" href="#module-inline_table" title="Permalink to this headline">¶</a></h1>
+<p>inline-table - Embedded text tables in Python code.</p>
+<p><code class="docutils literal"><span class="pre">inline_table</span></code> is a Python module for embedding text tables into
+source-code. We can write source-code just like a design document.</p>
+<dl class="function">
+<dt id="inline_table.compile">
+<code class="descclassname">inline_table.</code><code class="descname">compile</code><span class="sig-paren">(</span><em>text</em>, <em>**variables</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inline_table.html#compile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.compile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compile a table text to a <code class="docutils literal"><span class="pre">Table</span></code> object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>text</strong> (<em>string</em>) &#8211; a table text</li>
+<li><strong>variables</strong> (<em>dict</em>) &#8211; values passed to the table</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">a table object</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first"><a class="reference internal" href="#inline_table.Table" title="inline_table.Table">Table</a></p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><a class="reference internal" href="#inline_table.TableMarkupError" title="inline_table.TableMarkupError"><strong>TableMarkupError</strong></a> &#8211; the text format is incorrect</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><div class="first last highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">============ ======== ==========</span>
+<span class="gp">... </span><span class="s1"> age (cond)   gender  call (str)</span>
+<span class="gp">... </span><span class="s1">============ ======== ==========</span>
+<span class="gp">... </span><span class="s1">      a &lt; 0    N/A</span>
+<span class="gp">... </span><span class="s1"> 0 &lt;= a &lt; 2     *     baby</span>
+<span class="gp">... </span><span class="s1"> 0 &lt;= a &lt; 7     *     kid</span>
+<span class="gp">... </span><span class="s1"> 7 &lt;= a &lt; 18    M     boy</span>
+<span class="gp">... </span><span class="s1"> 7 &lt;= a &lt; 16    F     girl</span>
+<span class="gp">... </span><span class="s1">18 &lt;= a         M     gentleman</span>
+<span class="gp">... </span><span class="s1">16 &lt;= a         F     lady</span>
+<span class="gp">... </span><span class="s1">      *         *     man</span>
+<span class="gp">... </span><span class="s1">============ ======== ==========</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="n">M</span><span class="o">=</span><span class="s1">&#39;male&#39;</span><span class="p">,</span> <span class="n">F</span><span class="o">=</span><span class="s1">&#39;female&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">table</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">age</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span> <span class="n">gender</span><span class="o">=</span><span class="s1">&#39;female&#39;</span><span class="p">)</span>
+<span class="go">Tuple(age=24, gender=&#39;female&#39;, call=&#39;lady&#39;)</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Table Text Formats</strong>:</p>
+<p><code class="docutils literal"><span class="pre">inline_table</span></code> supports the following format as a table text:</p>
+<ul class="simple">
+<li><a class="reference external" href="http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html#simple-tables">reStructuredText Simple Tables</a>,</li>
+<li><a class="reference external" href="http://docutils.sourceforge.net/docs/ref/rst/restructuredtext.html#grid-tables">reStructuredText Grid Tables</a>,</li>
+<li><a class="reference external" href="https://michelf.ca/projects/php-markdown/extra/#table">Markdown Tables</a>.</li>
+</ul>
+<p>The format of the table text is estimated automatically.</p>
+<p><strong>Passing Values</strong>:</p>
+<p>We can pass values to the table with the <code class="docutils literal"><span class="pre">variables</span></code> keyword arguments.
+Values can be passed with the following syntax:</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="nb">compile</span><span class="p">(</span><span class="n">text</span><span class="p">,</span>
+        <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">&lt;</span><span class="n">name</span><span class="o">&gt;=&lt;</span><span class="n">value</span><span class="o">&gt;</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here <code class="docutils literal"><span class="pre">&lt;name&gt;</span></code> are variable names written in the table text.</p>
+<p><strong>Special Values</strong>:</p>
+<p>Two special values can be set to the table.</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="25%" />
+<col width="14%" />
+<col width="62%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Directive</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Wild Card</td>
+<td><code class="docutils literal"><span class="pre">*</span></code></td>
+<td>Matches any value. The universal set.</td>
+</tr>
+<tr class="row-odd"><td>Not-Applicable</td>
+<td><code class="docutils literal"><span class="pre">N/A</span></code></td>
+<td>N/A rows are never returned for queries.</td>
+</tr>
+</tbody>
+</table>
+<p>If a string in a cell of the table text equals a directive, the cell is
+evaluated as the special value.</p>
+<p>Note that the string column type does not support the special values.</p>
+<p><strong>Column Types</strong>:</p>
+<p>We can specify a column type with adding a directive to the header
+row. The difference among column types is how the strings in each cell are
+evaluated. <code class="docutils literal"><span class="pre">inline_table</span></code> provides five column types:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="25%" />
+<col width="51%" />
+<col width="7%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Column Type</th>
+<th class="head">Directive</th>
+<th class="head">Evaluated As</th>
+<th class="head">Set?</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td>Value</td>
+<td>No Directive,
+(value), (val)</td>
+<td>Python literal</td>
+<td>no</td>
+</tr>
+<tr class="row-odd"><td>String</td>
+<td>(string), (str)</td>
+<td>String.
+Not support <code class="docutils literal"><span class="pre">*</span></code> and <code class="docutils literal"><span class="pre">N/A</span></code>.</td>
+<td>no</td>
+</tr>
+<tr class="row-even"><td>Condition</td>
+<td>(condition),
+(cond)</td>
+<td>Conditional statement.
+Use the 1st letter of the label</td>
+<td>yes</td>
+</tr>
+<tr class="row-odd"><td>Regex</td>
+<td>(regex), (re)</td>
+<td>Regular expression</td>
+<td>yes</td>
+</tr>
+<tr class="row-even"><td>Collection</td>
+<td>(collection),
+(coll)</td>
+<td>Collection of values</td>
+<td>yes</td>
+</tr>
+</tbody>
+</table>
+<p>A cell in a set column type represents multiple values. The upper table and
+the lower table in the following act almost similarly (but not strictively
+equal).</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span><span class="o">=========</span> <span class="o">===</span>
+<span class="n">a</span> <span class="p">(</span><span class="n">coll</span><span class="p">)</span>   <span class="n">b</span>
+<span class="o">=========</span> <span class="o">===</span>
+<span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>  <span class="mi">4</span>
+<span class="o">=========</span> <span class="o">===</span>
+
+<span class="o">=======</span> <span class="o">===</span>
+<span class="n">a</span> <span class="p">(</span><span class="n">val</span><span class="p">)</span>  <span class="n">b</span>
+<span class="o">=======</span> <span class="o">===</span>
+   <span class="mi">1</span>     <span class="mi">4</span>
+   <span class="mi">2</span>     <span class="mi">4</span>
+   <span class="mi">3</span>     <span class="mi">4</span>
+<span class="o">=======</span> <span class="o">===</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="class">
+<dt id="inline_table.Table">
+<em class="property">class </em><code class="descclassname">inline_table.</code><code class="descname">Table</code><a class="reference internal" href="_modules/inline_table.html#Table"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.Table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Data structure having a table data.</p>
+<p>Table objects are created by the <code class="docutils literal"><span class="pre">compile</span></code> function.</p>
+<dl class="method">
+<dt id="inline_table.Table.select">
+<code class="descname">select</code><span class="sig-paren">(</span><em>**condition</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inline_table.html#Table.select"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.Table.select" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the first row that matches the condition.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>condition</strong> &#8211; pairs of a column label and its value</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the fist matched row</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">Tuple (named tuple)</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>LookupError</strong> &#8211; no applicable row is found for the condition</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><div class="first last highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">t</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">=== =====</span>
+<span class="gp">... </span><span class="s1">key value</span>
+<span class="gp">... </span><span class="s1">=== =====</span>
+<span class="gp">... </span><span class="s1">&#39;A&#39;   1</span>
+<span class="gp">... </span><span class="s1">&#39;B&#39;   2</span>
+<span class="gp">... </span><span class="s1">=== =====</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">t</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>
+<span class="go">Tuple(key=&#39;A&#39;, value=1)</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inline_table.Table.select_all">
+<code class="descname">select_all</code><span class="sig-paren">(</span><em>**condition</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inline_table.html#Table.select_all"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.Table.select_all" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get all rows that match the condition.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>condition</strong> &#8211; pairs of a column label and its value</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">list of matched rows</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">list of named tuples</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first"><strong>LookupError</strong> &#8211; a key in the condition is invalid</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><div class="first last highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">t</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">=== =====</span>
+<span class="gp">... </span><span class="s1">key value</span>
+<span class="gp">... </span><span class="s1">=== =====</span>
+<span class="gp">... </span><span class="s1">&#39;A&#39;   1</span>
+<span class="gp">... </span><span class="s1">&#39;A&#39;  N/A</span>
+<span class="gp">... </span><span class="s1">&#39;B&#39;   2</span>
+<span class="gp">... </span><span class="s1"> *    3</span>
+<span class="gp">... </span><span class="s1">=== =====</span>
+<span class="gp">... </span><span class="s1">&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">t</span><span class="o">.</span><span class="n">select_all</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s1">&#39;A&#39;</span><span class="p">)</span>
+<span class="go">[Tuple(key=&#39;A&#39;, value=1), Tuple(key=&#39;A&#39;, value=3)]</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inline_table.Table.contains">
+<code class="descname">contains</code><span class="sig-paren">(</span><em>values</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inline_table.html#Table.contains"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.Table.contains" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check if this table contains given values.</p>
+<p>In-statement is also available.</p>
+<p>A row contain N/A returns False.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><div class="first last highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">t</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">=== ===</span>
+<span class="gp">... </span><span class="s1"> A   B</span>
+<span class="gp">... </span><span class="s1">=== ===</span>
+<span class="gp">... </span><span class="s1"> 1   2</span>
+<span class="gp">... </span><span class="s1">=== ===&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">{</span><span class="s1">&#39;A&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span> <span class="ow">in</span> <span class="n">t</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="ow">in</span> <span class="n">t</span>
+<span class="go">True</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inline_table.Table.iterator">
+<code class="descname">iterator</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/inline_table.html#Table.iterator"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.Table.iterator" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return an iterator object.</p>
+<p>The <code class="docutils literal"><span class="pre">iter</span></code> build-in function and for-loops are also available.</p>
+<p>A row that contains the not-applicable value is skipped.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><div class="first last highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">t</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">=== ===</span>
+<span class="gp">... </span><span class="s1"> A   B</span>
+<span class="gp">... </span><span class="s1">=== ===</span>
+<span class="gp">... </span><span class="s1"> 1   2</span>
+<span class="gp">... </span><span class="s1"> 2  N/A</span>
+<span class="gp">... </span><span class="s1"> 3   6</span>
+<span class="gp">... </span><span class="s1"> *   0</span>
+<span class="gp">... </span><span class="s1">=== ===&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">i</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<span class="go">Tuple(A=1, B=2)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<span class="go">Tuple(A=3, B=6)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<span class="go">Tuple(A=WildCard, B=0)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">next</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+<span class="gt">Traceback (most recent call last):</span>
+    <span class="o">...</span>
+<span class="gr">StopIteration</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inline_table.Table.union">
+<code class="descname">union</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inline_table.html#Table.union"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.Table.union" title="Permalink to this definition">¶</a></dt>
+<dd><p>Concatenate two tables.</p>
+<p>Tables can be concatenated also with <code class="docutils literal"><span class="pre">+</span></code> operator.</p>
+<p>Two tables must have the same width, the same labels and
+the same type columns.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>other</strong> &#8211; a table to be concatenated</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">the concatenated table</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Raises:</th><td class="field-body"><strong>TypeError</strong> &#8211; width, labels or columns types are different</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="inline_table.Table.join">
+<code class="descname">join</code><span class="sig-paren">(</span><em>other</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/inline_table.html#Table.join"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.Table.join" title="Permalink to this definition">¶</a></dt>
+<dd><p>Join two tables.</p>
+<p>Tables can be joned also with <code class="docutils literal"><span class="pre">*</span></code> operator.</p>
+<p>This method behaves like NATURAL INNER JOIN in SQL.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><p class="first"><strong>other</strong> &#8211; a table to be join</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">the joined table</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Example:</th><td class="field-body"><div class="first last highlight-default"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">t1</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">| A | B |</span>
+<span class="gp">... </span><span class="s1">|---|---|</span>
+<span class="gp">... </span><span class="s1">| 1 | 1 |</span>
+<span class="gp">... </span><span class="s1">| 2 | 2 |&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">t2</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="gp">... </span><span class="s1">| A (cond)   | C |</span>
+<span class="gp">... </span><span class="s1">|------------|---|</span>
+<span class="gp">... </span><span class="s1">| A % 2 == 0 | 0 |</span>
+<span class="gp">... </span><span class="s1">| A % 2 == 1 | 1 |&#39;&#39;&#39;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">t3</span> <span class="o">=</span> <span class="n">t1</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">t2</span><span class="p">)</span>  <span class="c1"># ``t1 * t2`` is equivalent</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">t3</span><span class="o">.</span><span class="n">select_all</span><span class="p">()</span>
+<span class="go">[Tuple(A=1, B=1, C=1), Tuple(A=2, B=2, C=0)]</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="inline_table.TableMarkupError">
+<em class="property">class </em><code class="descclassname">inline_table.</code><code class="descname">TableMarkupError</code><a class="reference internal" href="_modules/inline_table.html#TableMarkupError"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#inline_table.TableMarkupError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exception about a table text format.</p>
+</dd></dl>
+
+<div class="section" id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></li>
+<li><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></li>
+<li><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="#">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Python inline_table Module API Reference</a><ul>
+<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Kazuho Fujii.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

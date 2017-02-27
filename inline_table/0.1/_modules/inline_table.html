@@ -1,0 +1,1262 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>inline_table &#8212; Python inline_table module  documentation</title>
+    
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for inline_table</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;inline-table - Embedded text tables in Python code.</span>
+
+<span class="sd">``inline_table`` is a Python module for embedding text tables into</span>
+<span class="sd">source-code. We can write source-code just like a design document.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="kn">from</span> <span class="nn">docutils.parsers.rst.tableparser</span> \
+    <span class="kn">import</span> <span class="nn">SimpleTableParser</span> <span class="k">as</span> <span class="nn">DocutilsSimpleTableParser</span>
+<span class="kn">from</span> <span class="nn">docutils.parsers.rst.tableparser</span> \
+    <span class="kn">import</span> <span class="nn">GridTableParser</span> <span class="k">as</span> <span class="nn">DocutilsGridTableParser</span>
+<span class="kn">from</span> <span class="nn">docutils.parsers.rst.tableparser</span> \
+    <span class="kn">import</span> <span class="nn">TableMarkupError</span> <span class="k">as</span> <span class="nn">DocutilsTableMarkupError</span>
+<span class="kn">from</span> <span class="nn">docutils.statemachine</span> <span class="k">import</span> <span class="n">StringList</span>
+
+<span class="n">__docformat__</span> <span class="o">=</span> <span class="s1">&#39;reStructuredText&#39;</span>
+<span class="n">__version__</span> <span class="o">=</span> <span class="s1">&#39;0.1.0&#39;</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;compile&#39;</span><span class="p">,</span> <span class="s1">&#39;Table&#39;</span><span class="p">,</span> <span class="s1">&#39;TableMarkupError&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="compile"><a class="viewcode-back" href="../index.html#inline_table.compile">[docs]</a><span class="k">def</span> <span class="nf">compile</span><span class="p">(</span><span class="n">text</span><span class="p">,</span> <span class="o">**</span><span class="n">variables</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compile a table text to a ``Table`` object.</span>
+
+<span class="sd">    :param text: a table text</span>
+<span class="sd">    :param variables: values passed to the table</span>
+<span class="sd">    :type text: string</span>
+<span class="sd">    :type variables: dict</span>
+<span class="sd">    :return: a table object</span>
+<span class="sd">    :rtype: Table</span>
+<span class="sd">    :raise TableMarkupError: the text format is incorrect</span>
+
+<span class="sd">    :Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; text = &#39;&#39;&#39;</span>
+<span class="sd">        ... ============ ======== ==========</span>
+<span class="sd">        ...  age (cond)   gender  call (str)</span>
+<span class="sd">        ... ============ ======== ==========</span>
+<span class="sd">        ...       a &lt; 0    N/A</span>
+<span class="sd">        ...  0 &lt;= a &lt; 2     *     baby</span>
+<span class="sd">        ...  0 &lt;= a &lt; 7     *     kid</span>
+<span class="sd">        ...  7 &lt;= a &lt; 18    M     boy</span>
+<span class="sd">        ...  7 &lt;= a &lt; 16    F     girl</span>
+<span class="sd">        ... 18 &lt;= a         M     gentleman</span>
+<span class="sd">        ... 16 &lt;= a         F     lady</span>
+<span class="sd">        ...       *         *     man</span>
+<span class="sd">        ... ============ ======== ==========</span>
+<span class="sd">        ... &#39;&#39;&#39;</span>
+<span class="sd">        &gt;&gt;&gt; table = compile(text, M=&#39;male&#39;, F=&#39;female&#39;)</span>
+<span class="sd">        &gt;&gt;&gt; table.select(age=24, gender=&#39;female&#39;)</span>
+<span class="sd">        Tuple(age=24, gender=&#39;female&#39;, call=&#39;lady&#39;)</span>
+
+<span class="sd">    **Table Text Formats**:</span>
+
+<span class="sd">    ``inline_table`` supports the following format as a table text:</span>
+
+<span class="sd">    - `reStructuredText Simple Tables`_,</span>
+<span class="sd">    - `reStructuredText Grid Tables`_,</span>
+<span class="sd">    - `Markdown Tables`_.</span>
+
+<span class="sd">    .. _reStructuredText Simple Tables: http://docutils.sourceforge.net/</span>
+<span class="sd">                            docs/ref/rst/restructuredtext.html#simple-tables</span>
+<span class="sd">    .. _reStructuredText Grid Tables: http://docutils.sourceforge.net/</span>
+<span class="sd">                            docs/ref/rst/restructuredtext.html#grid-tables</span>
+<span class="sd">    .. _Markdown Tables: https://michelf.ca/projects/php-markdown/extra/#table</span>
+
+<span class="sd">    The format of the table text is estimated automatically.</span>
+
+<span class="sd">    **Passing Values**:</span>
+
+<span class="sd">    We can pass values to the table with the ``variables`` keyword arguments.</span>
+<span class="sd">    Values can be passed with the following syntax: ::</span>
+
+<span class="sd">        compile(text,</span>
+<span class="sd">                &lt;name&gt;=&lt;value&gt;, &lt;name&gt;=&lt;value&gt;, ...)</span>
+
+<span class="sd">    Here ``&lt;name&gt;`` are variable names written in the table text.</span>
+
+<span class="sd">    **Special Values**:</span>
+
+<span class="sd">    Two special values can be set to the table.</span>
+
+<span class="sd">    ================ ========= ========================================</span>
+<span class="sd">     Name            Directive Description</span>
+<span class="sd">    ================ ========= ========================================</span>
+<span class="sd">     Wild Card         ``*``   Matches any value. The universal set.</span>
+<span class="sd">     Not-Applicable   ``N/A``  N/A rows are never returned for queries.</span>
+<span class="sd">    ================ ========= ========================================</span>
+
+<span class="sd">    If a string in a cell of the table text equals a directive, the cell is</span>
+<span class="sd">    evaluated as the special value.</span>
+
+<span class="sd">    Note that the string column type does not support the special values.</span>
+
+<span class="sd">    **Column Types**:</span>
+
+<span class="sd">    We can specify a column type with adding a directive to the header</span>
+<span class="sd">    row. The difference among column types is how the strings in each cell are</span>
+<span class="sd">    evaluated. ``inline_table`` provides five column types:</span>
+
+<span class="sd">    =========== =============== =============================== ====</span>
+<span class="sd">    Column Type Directive       Evaluated As                    Set?</span>
+<span class="sd">    =========== =============== =============================== ====</span>
+<span class="sd">    Value       No Directive,   Python literal                  no</span>
+<span class="sd">                (value), (val)</span>
+<span class="sd">    String      (string), (str) String.                         no</span>
+<span class="sd">                                Not support ``*`` and ``N/A``.</span>
+<span class="sd">    Condition   (condition),    Conditional statement.          yes</span>
+<span class="sd">                (cond)          Use the 1st letter of the label</span>
+<span class="sd">    Regex       (regex), (re)   Regular expression              yes</span>
+<span class="sd">    Collection  (collection),   Collection of values            yes</span>
+<span class="sd">                (coll)</span>
+<span class="sd">    =========== =============== =============================== ====</span>
+
+<span class="sd">    A cell in a set column type represents multiple values. The upper table and</span>
+<span class="sd">    the lower table in the following act almost similarly (but not strictively</span>
+<span class="sd">    equal). ::</span>
+
+<span class="sd">        ========= ===</span>
+<span class="sd">        a (coll)   b</span>
+<span class="sd">        ========= ===</span>
+<span class="sd">        (1, 2, 3)  4</span>
+<span class="sd">        ========= ===</span>
+
+<span class="sd">        ======= ===</span>
+<span class="sd">        a (val)  b</span>
+<span class="sd">        ======= ===</span>
+<span class="sd">           1     4</span>
+<span class="sd">           2     4</span>
+<span class="sd">           3     4</span>
+<span class="sd">        ======= ===</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">splitlines</span><span class="p">()</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="n">strip_lines</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+    <span class="n">fmt</span> <span class="o">=</span> <span class="n">Format</span><span class="o">.</span><span class="n">estimate_format</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+    <span class="n">labels</span><span class="p">,</span> <span class="n">rows</span> <span class="o">=</span> <span class="n">fmt</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+    <span class="n">column_types</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;&#39;</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">))]</span>
+
+    <span class="c1"># Move &#39;(...)&#39; word from labels to column_types.</span>
+    <span class="c1"># e.g.,</span>
+    <span class="c1"># label = &#39;a&#39;, column_type = &#39;(a)&#39;  --&gt; label = &#39;a&#39;, column_type = &#39;(a)&#39;</span>
+    <span class="c1"># label = &#39;a(a)&#39;, column_type = &#39;&#39;  --&gt; label = &#39;a&#39;, column_type = &#39;(a)&#39;</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">r&#39;([a-zA-Z_]+[0-9_]*) *(\([a-zA-Z0-9_]*\))&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
+        <span class="n">match</span> <span class="o">=</span> <span class="n">pattern</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">match</span><span class="p">:</span>
+            <span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">column_types</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">match</span><span class="o">.</span><span class="n">group</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+    <span class="c1"># Convert strings to ColumnType values</span>
+    <span class="n">column_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">ColumnType</span><span class="o">.</span><span class="n">get_column_type</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">column_types</span><span class="p">]</span>
+    <span class="n">table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">()</span><span class="o">.</span><span class="n">_initialize</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">column_types</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="c1"># Evaluate the literal in each cell with given variables.</span>
+        <span class="n">row_evaluated</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+            <span class="n">column_type</span> <span class="o">=</span> <span class="n">column_types</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">eval_val</span> <span class="o">=</span> <span class="n">column_type</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+            <span class="n">row_evaluated</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">eval_val</span><span class="p">)</span>
+        <span class="n">table</span><span class="o">.</span><span class="n">_insert</span><span class="p">(</span><span class="n">row_evaluated</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">table</span></div>
+
+
+<span class="k">def</span> <span class="nf">strip_lines</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Remove leading/trailing white lines and indents.&quot;&quot;&quot;</span>
+    <span class="c1"># Remove leading white lines.</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">r&#39;^\s*$&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="k">del</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="c1"># Remove trailing white lines.</span>
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">r&#39;^\s*$&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="k">del</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="c1"># Remove indent.</span>
+    <span class="c1"># Count whitespaces of 1st and 2nd row, and regard the smaller one is</span>
+    <span class="c1"># the indent width. The reason to see the 2nd row is for the case of</span>
+    <span class="c1"># Markdown table without side &#39;|&#39;s.</span>
+    <span class="n">indent0</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s1">r&#39;\S&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  <span class="c1"># 1st row</span>
+    <span class="n">indent1</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="s1">r&#39;\S&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  <span class="c1"># 2nd row</span>
+    <span class="n">indent</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">indent0</span><span class="p">,</span> <span class="n">indent1</span><span class="p">)</span>
+    <span class="n">lines</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="p">[</span><span class="n">indent</span><span class="p">:]</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">lines</span>
+
+
+<div class="viewcode-block" id="Table"><a class="viewcode-back" href="../index.html#inline_table.Table">[docs]</a><span class="k">class</span> <span class="nc">Table</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Data structure having a table data.</span>
+
+<span class="sd">    Table objects are created by the ``compile`` function.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">labels</span><span class="p">,</span> <span class="n">column_types</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Private initializer.</span>
+
+<span class="sd">        This method is defined as I do not show __init__ for users. Call</span>
+<span class="sd">        ``Table._initialize(labels, column_types)`` instead of</span>
+<span class="sd">        ``Table(labels column_types)``.</span>
+
+<span class="sd">        :param labels: list of label names</span>
+<span class="sd">        :param column_types: list of column types</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Create a type of named tuple.</span>
+        <span class="c1"># We name the type name as &#39;Tuple&#39;. Traditionally, the row of</span>
+        <span class="c1"># relational database is called tuple and it has attributes.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">Tuple</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s1">&#39;Tuple&#39;</span><span class="p">,</span> <span class="n">labels</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">column_types</span><span class="p">:</span>
+            <span class="n">column_types</span> <span class="o">=</span> <span class="p">[</span><span class="n">ColumnType</span><span class="o">.</span><span class="n">Value</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">column_types</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">Tuple</span><span class="p">(</span><span class="o">*</span><span class="n">column_types</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return Tab separated values.&quot;&quot;&quot;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labels</span><span class="p">))</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_types</span><span class="p">]))</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">repr</span><span class="p">(</span><span class="n">c</span><span class="p">)</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]))</span>
+        <span class="k">return</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_labels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return labels.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_types</span><span class="o">.</span><span class="n">_fields</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_num_columns</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the number of columns.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_types</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">_num_rows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return the number of rows.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_insert</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">row_values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Add row data.</span>
+
+<span class="sd">        :param row_values: list of values in a row</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Tuple</span><span class="p">(</span><span class="o">*</span><span class="n">row_values</span><span class="p">))</span>
+
+<div class="viewcode-block" id="Table.iterator"><a class="viewcode-back" href="../index.html#inline_table.Table.iterator">[docs]</a>    <span class="k">def</span> <span class="nf">iterator</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return an iterator object.</span>
+
+<span class="sd">        The ``iter`` build-in function and for-loops are also available.</span>
+
+<span class="sd">        A row that contains the not-applicable value is skipped.</span>
+
+<span class="sd">        :Example:</span>
+
+<span class="sd">            &gt;&gt;&gt; t = compile(&#39;&#39;&#39;</span>
+<span class="sd">            ... === ===</span>
+<span class="sd">            ...  A   B</span>
+<span class="sd">            ... === ===</span>
+<span class="sd">            ...  1   2</span>
+<span class="sd">            ...  2  N/A</span>
+<span class="sd">            ...  3   6</span>
+<span class="sd">            ...  *   0</span>
+<span class="sd">            ... === ===&#39;&#39;&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; i = iter(t)</span>
+<span class="sd">            &gt;&gt;&gt; next(i)</span>
+<span class="sd">            Tuple(A=1, B=2)</span>
+<span class="sd">            &gt;&gt;&gt; next(i)</span>
+<span class="sd">            Tuple(A=3, B=6)</span>
+<span class="sd">            &gt;&gt;&gt; next(i)</span>
+<span class="sd">            Tuple(A=WildCard, B=0)</span>
+<span class="sd">            &gt;&gt;&gt; next(i)</span>
+<span class="sd">            Traceback (most recent call last):</span>
+<span class="sd">                ...</span>
+<span class="sd">            StopIteration</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Almost as same as select_all()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__select</span><span class="p">(</span><span class="n">condition</span><span class="o">=</span><span class="p">{},</span> <span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return self.iterator().&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">iterator</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Table.contains"><a class="viewcode-back" href="../index.html#inline_table.Table.contains">[docs]</a>    <span class="k">def</span> <span class="nf">contains</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if this table contains given values.</span>
+
+<span class="sd">        In-statement is also available.</span>
+
+<span class="sd">        A row contain N/A returns False.</span>
+
+<span class="sd">        :Example:</span>
+
+<span class="sd">            &gt;&gt;&gt; t = compile(&#39;&#39;&#39;</span>
+<span class="sd">            ... === ===</span>
+<span class="sd">            ...  A   B</span>
+<span class="sd">            ... === ===</span>
+<span class="sd">            ...  1   2</span>
+<span class="sd">            ... === ===&#39;&#39;&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; {&#39;A&#39;: 1} in t</span>
+<span class="sd">            True</span>
+<span class="sd">            &gt;&gt;&gt; (1, 2) in t</span>
+<span class="sd">            True</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+            <span class="n">condition</span> <span class="o">=</span> <span class="n">values</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">or</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">values</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_columns</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="n">condition</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_columns</span><span class="p">):</span>
+                <span class="n">label</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+                <span class="n">condition</span><span class="p">[</span><span class="n">label</span><span class="p">]</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="o">**</span><span class="n">condition</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="k">except</span> <span class="ne">LookupError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span></div>
+
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Check if this table contains given values.</span>
+
+<span class="sd">        This is a syntax suggar of the ``contains`` method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Table.select"><a class="viewcode-back" href="../index.html#inline_table.Table.select">[docs]</a>    <span class="k">def</span> <span class="nf">select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">condition</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the first row that matches the condition.</span>
+
+<span class="sd">        :param condition: pairs of a column label and its value</span>
+<span class="sd">        :return: the fist matched row</span>
+<span class="sd">        :rtype: Tuple (named tuple)</span>
+<span class="sd">        :raise LookupError: no applicable row is found for the condition</span>
+
+<span class="sd">        :Example:</span>
+
+<span class="sd">            &gt;&gt;&gt; t = compile(&#39;&#39;&#39;</span>
+<span class="sd">            ... === =====</span>
+<span class="sd">            ... key value</span>
+<span class="sd">            ... === =====</span>
+<span class="sd">            ... &#39;A&#39;   1</span>
+<span class="sd">            ... &#39;B&#39;   2</span>
+<span class="sd">            ... === =====</span>
+<span class="sd">            ... &#39;&#39;&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; t.select(key=&#39;A&#39;)</span>
+<span class="sd">            Tuple(key=&#39;A&#39;, value=1)</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">condition</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">LookupError</span><span class="p">(</span><span class="s2">&quot;The condition is empty&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">__select</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">raise_error</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Table.select_all"><a class="viewcode-back" href="../index.html#inline_table.Table.select_all">[docs]</a>    <span class="k">def</span> <span class="nf">select_all</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">condition</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get all rows that match the condition.</span>
+
+<span class="sd">        :param condition: pairs of a column label and its value</span>
+<span class="sd">        :return: list of matched rows</span>
+<span class="sd">        :rtype: list of named tuples</span>
+<span class="sd">        :raise LookupError: a key in the condition is invalid</span>
+
+<span class="sd">        :Example:</span>
+
+<span class="sd">            &gt;&gt;&gt; t = compile(&#39;&#39;&#39;</span>
+<span class="sd">            ... === =====</span>
+<span class="sd">            ... key value</span>
+<span class="sd">            ... === =====</span>
+<span class="sd">            ... &#39;A&#39;   1</span>
+<span class="sd">            ... &#39;A&#39;  N/A</span>
+<span class="sd">            ... &#39;B&#39;   2</span>
+<span class="sd">            ...  *    3</span>
+<span class="sd">            ... === =====</span>
+<span class="sd">            ... &#39;&#39;&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; t.select_all(key=&#39;A&#39;)</span>
+<span class="sd">            [Tuple(key=&#39;A&#39;, value=1), Tuple(key=&#39;A&#39;, value=3)]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">generator</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__select</span><span class="p">(</span><span class="n">condition</span><span class="p">,</span> <span class="n">raise_error</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="n">generator</span><span class="p">))</span>
+            <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">rows</span></div>
+
+    <span class="k">def</span> <span class="nf">__select</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">condition</span><span class="p">,</span> <span class="n">raise_error</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a generator to select.&quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">format_condition</span><span class="p">(</span><span class="n">condition</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Format condition value to &#39;key1=a, key2=b&#39; style.&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">key</span> <span class="o">+</span> <span class="s1">&#39;=&#39;</span> <span class="o">+</span> <span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">condition</span><span class="o">.</span><span class="n">items</span><span class="p">()])</span>
+
+        <span class="k">def</span> <span class="nf">get_value</span><span class="p">(</span><span class="n">named_tuple</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Wrapper of getattr build-in function.&quot;&quot;&quot;</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">named_tuple</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">LookupError</span><span class="p">(</span><span class="s2">&quot;Label &#39;</span><span class="si">%s</span><span class="s2">&#39; is invalid&quot;</span> <span class="o">%</span> <span class="n">label</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Return True if all values in the row match the condition.&quot;&quot;&quot;</span>
+            <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">condition_value</span> <span class="ow">in</span> <span class="n">condition</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">row_value</span> <span class="o">=</span> <span class="n">get_value</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+                <span class="n">column_type</span> <span class="o">=</span> <span class="n">get_value</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_types</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">column_type</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">row_value</span><span class="p">,</span> <span class="n">condition_value</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">match</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># If the row is N/A raise an error.</span>
+            <span class="k">if</span> <span class="n">NotApplicable</span> <span class="ow">in</span> <span class="n">row</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">raise_error</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">LookupError</span><span class="p">(</span>
+                        <span class="s2">&quot;The result for the condition is not applicable: &quot;</span> <span class="o">+</span>
+                        <span class="n">format_condition</span><span class="p">(</span><span class="n">condition</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">continue</span>
+
+            <span class="c1"># Overwrite with the values in the condition</span>
+            <span class="c1"># for excepting the wild card.</span>
+            <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">condition</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">kv</span> <span class="o">=</span> <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">value</span><span class="p">}</span>
+                <span class="n">row</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">_replace</span><span class="p">(</span><span class="o">**</span><span class="n">kv</span><span class="p">)</span>
+            <span class="k">yield</span> <span class="n">row</span>
+
+        <span class="c1"># If no row is matched</span>
+        <span class="k">if</span> <span class="n">raise_error</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">LookupError</span><span class="p">(</span>
+                <span class="s2">&quot;No row is found for the condition: &quot;</span> <span class="o">+</span>
+                <span class="n">format_condition</span><span class="p">(</span><span class="n">condition</span><span class="p">))</span>
+        <span class="c1"># stop iteration</span>
+
+<div class="viewcode-block" id="Table.union"><a class="viewcode-back" href="../index.html#inline_table.Table.union">[docs]</a>    <span class="k">def</span> <span class="nf">union</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Concatenate two tables.</span>
+
+<span class="sd">        Tables can be concatenated also with ``+`` operator.</span>
+
+<span class="sd">        Two tables must have the same width, the same labels and</span>
+<span class="sd">        the same type columns.</span>
+
+<span class="sd">        :param other: a table to be concatenated</span>
+<span class="sd">        :return: the concatenated table</span>
+<span class="sd">        :raise TypeError: width, labels or columns types are different</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_columns</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">_num_columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;Width of the tables are different: </span><span class="si">%d</span><span class="s2"> != </span><span class="si">%d</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_num_columns</span><span class="p">,</span> <span class="n">other</span><span class="o">.</span><span class="n">_num_columns</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_labels</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">_labels</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;Labels of the tables are different: </span><span class="si">%s</span><span class="s2"> != </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labels</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_labels</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">column_types</span> <span class="o">!=</span> <span class="n">other</span><span class="o">.</span><span class="n">column_types</span><span class="p">:</span>
+            <span class="k">def</span> <span class="nf">format_column_types</span><span class="p">(</span><span class="n">column_types</span><span class="p">):</span>
+                <span class="k">return</span> <span class="s1">&#39;(</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">column_types</span><span class="p">])</span>
+
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;Column types of the tables are different: </span><span class="si">%s</span><span class="s2"> != </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                    <span class="n">format_column_types</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">column_types</span><span class="p">),</span>
+                    <span class="n">format_column_types</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">column_types</span><span class="p">)))</span>
+
+        <span class="n">new_table</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">rows</span><span class="p">:</span>
+            <span class="n">new_table</span><span class="o">.</span><span class="n">_insert</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_table</span></div>
+
+    <span class="k">def</span> <span class="nf">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Concatenate two tables.</span>
+
+<span class="sd">        This is a syntax sugar of the ``union`` method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Table.join"><a class="viewcode-back" href="../index.html#inline_table.Table.join">[docs]</a>    <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Join two tables.</span>
+
+<span class="sd">        Tables can be joned also with ``*`` operator.</span>
+
+<span class="sd">        This method behaves like NATURAL INNER JOIN in SQL.</span>
+
+<span class="sd">        :param other: a table to be join</span>
+<span class="sd">        :return: the joined table</span>
+
+<span class="sd">        :Example:</span>
+
+<span class="sd">            &gt;&gt;&gt; t1 = compile(&#39;&#39;&#39;</span>
+<span class="sd">            ... | A | B |</span>
+<span class="sd">            ... |---|---|</span>
+<span class="sd">            ... | 1 | 1 |</span>
+<span class="sd">            ... | 2 | 2 |&#39;&#39;&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; t2 = compile(&#39;&#39;&#39;</span>
+<span class="sd">            ... | A (cond)   | C |</span>
+<span class="sd">            ... |------------|---|</span>
+<span class="sd">            ... | A % 2 == 0 | 0 |</span>
+<span class="sd">            ... | A % 2 == 1 | 1 |&#39;&#39;&#39;)</span>
+<span class="sd">            &gt;&gt;&gt; t3 = t1.join(t2)  # ``t1 * t2`` is equivalent</span>
+<span class="sd">            &gt;&gt;&gt; t3.select_all()</span>
+<span class="sd">            [Tuple(A=1, B=1, C=1), Tuple(A=2, B=2, C=0)]</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">l_labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_labels</span><span class="p">)</span>
+        <span class="n">r_labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">other</span><span class="o">.</span><span class="n">_labels</span><span class="p">)</span>
+        <span class="n">order</span> <span class="o">=</span> <span class="p">(</span><span class="n">l_labels</span> <span class="o">+</span> <span class="n">r_labels</span><span class="p">)</span><span class="o">.</span><span class="n">index</span>
+        <span class="n">union_labels</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">l_labels</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">r_labels</span><span class="p">),</span> <span class="n">key</span><span class="o">=</span><span class="n">order</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">get_ctypes</span><span class="p">(</span><span class="n">table</span><span class="p">):</span>
+            <span class="n">ctypes</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">union_labels</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">ctype</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">table</span><span class="o">.</span><span class="n">column_types</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+                <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                    <span class="n">ctype</span> <span class="o">=</span> <span class="n">ColumnType</span><span class="o">.</span><span class="n">_NoneType</span><span class="p">()</span>
+                <span class="n">ctypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ctype</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ctypes</span>
+
+        <span class="c1"># labels               LABEL1 LABEL2 LABEL3 LABEL4 LABEL5 LABEL6</span>
+        <span class="c1"># left column types    val    cond   str    regex  coll</span>
+        <span class="c1"># left column types           regex  str    cond   value  coll</span>
+        <span class="c1">#</span>
+        <span class="c1"># --&gt; Fill with NONE</span>
+        <span class="c1"># left column types    val    cond   str    regex  coll   NONE</span>
+        <span class="c1"># left column types    NONE   regex  str    cond   value  coll</span>
+        <span class="c1">#</span>
+        <span class="c1"># --&gt; Take join (Info about regex, str or coll are ommited)</span>
+        <span class="c1"># union column types   val    cond   val    cond   cond   cond</span>
+        <span class="n">l_ctypes</span> <span class="o">=</span> <span class="n">get_ctypes</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">r_ctypes</span> <span class="o">=</span> <span class="n">get_ctypes</span><span class="p">(</span><span class="n">other</span><span class="p">)</span>
+        <span class="n">union_ctypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">l_ctypes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">r_ctypes</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+                        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">union_labels</span><span class="p">)]</span>
+
+        <span class="k">def</span> <span class="nf">getvalue</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+                <span class="c1"># If the row does not have the label, return the wild card.</span>
+                <span class="k">return</span> <span class="n">WildCard</span>
+
+        <span class="n">joined_table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">()</span><span class="o">.</span><span class="n">_initialize</span><span class="p">(</span><span class="n">union_labels</span><span class="p">,</span> <span class="n">union_ctypes</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">l_row</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">r_row</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">rows</span><span class="p">:</span>
+                <span class="c1">#        LABEL1    LABEL2    LABEL3</span>
+                <span class="c1"># l_row  val1      val2</span>
+                <span class="c1"># r_row            val3      val4</span>
+                <span class="c1">#</span>
+                <span class="c1"># --&gt; Fill with WildCard (Universal Set)</span>
+                <span class="c1"># l_row  val1      val2      WildCard</span>
+                <span class="c1"># r_row  WildCard  val3      val4</span>
+                <span class="c1">#</span>
+                <span class="c1"># --&gt; Take intersection for each cell</span>
+                <span class="c1"># joined val1&amp;     val2&amp;     WildCard&amp;</span>
+                <span class="c1">#   row   WildCard  val3      val4</span>
+                <span class="c1">#</span>
+                <span class="c1"># --&gt; If a cell is empty set (IntersectionNotFound) skip the</span>
+                <span class="c1">#     row, else add to the joined table.</span>
+                <span class="n">joined_row</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">union_labels</span><span class="p">):</span>
+                    <span class="n">l_value</span> <span class="o">=</span> <span class="n">getvalue</span><span class="p">(</span><span class="n">l_row</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+                    <span class="n">r_value</span> <span class="o">=</span> <span class="n">getvalue</span><span class="p">(</span><span class="n">r_row</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">value</span> <span class="o">=</span> <span class="n">union_ctypes</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">evaluate</span><span class="p">(</span><span class="n">l_value</span><span class="p">,</span> <span class="n">r_value</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="n">IntersectionNotFound</span><span class="p">:</span>
+                        <span class="k">break</span>
+                    <span class="n">joined_row</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">joined_table</span><span class="o">.</span><span class="n">_insert</span><span class="p">(</span><span class="n">joined_row</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">joined_table</span></div>
+
+    <span class="k">def</span> <span class="nf">__mul__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Join two tables.</span>
+
+<span class="sd">        This is a syntax sugar of the ``join`` method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">other</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">ColumnType</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Type objects for columns.&quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">get_column_type</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">directive</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">type_cls</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cls</span><span class="o">.</span><span class="n">Value</span><span class="p">,</span>
+                         <span class="n">cls</span><span class="o">.</span><span class="n">Condition</span><span class="p">,</span>
+                         <span class="n">cls</span><span class="o">.</span><span class="n">String</span><span class="p">,</span>
+                         <span class="n">cls</span><span class="o">.</span><span class="n">Regex</span><span class="p">,</span>
+                         <span class="n">cls</span><span class="o">.</span><span class="n">Collection</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">directive</span> <span class="ow">in</span> <span class="n">type_cls</span><span class="o">.</span><span class="n">DIRECTIVES</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">type_cls</span><span class="p">()</span>
+        <span class="k">raise</span> <span class="n">TableMarkupError</span><span class="p">(</span><span class="s2">&quot;Invalid directive &#39;</span><span class="si">%s</span><span class="s2">&#39;&quot;</span> <span class="o">%</span> <span class="n">directive</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">_TypeBase</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Abstract class of all type types.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">DIRECTIVES</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">DIRECTIVES</span>
+
+    <span class="k">class</span> <span class="nc">_ValueBase</span><span class="p">(</span><span class="n">_TypeBase</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Abstract class of value type types.&quot;&quot;&quot;</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">is_set</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">is_set</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ColumnType</span><span class="o">.</span><span class="n">_ValueJoinSet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ColumnType</span><span class="o">.</span><span class="n">_ValueJoinValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">a</span> <span class="o">==</span> <span class="n">b</span>
+
+    <span class="k">class</span> <span class="nc">_SetBase</span><span class="p">(</span><span class="n">_TypeBase</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Abstract class of set type types.&quot;&quot;&quot;</span>
+
+        <span class="nd">@property</span>
+        <span class="k">def</span> <span class="nf">is_set</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="k">def</span> <span class="nf">join</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">other</span><span class="o">.</span><span class="n">is_set</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ColumnType</span><span class="o">.</span><span class="n">_SetJoinSet</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">ColumnType</span><span class="o">.</span><span class="n">_SetJoinValue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;Not Implemented&#39;</span>
+
+    <span class="k">class</span> <span class="nc">Value</span><span class="p">(</span><span class="n">_ValueBase</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Raw values.</span>
+
+<span class="sd">        This column type is default.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">DIRECTIVES</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;(value)&#39;</span><span class="p">,</span> <span class="s1">&#39;(val)&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>  <span class="c1"># Empty string is here.</span>
+
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;value&#39;</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Evaluate a string in the table cell.&quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">NotApplicable</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+            <span class="k">return</span> <span class="nb">eval</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">Condition</span><span class="p">(</span><span class="n">_SetBase</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Conditions.</span>
+
+<span class="sd">        Data in a condition column is converted to functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">DIRECTIVES</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;(condition)&#39;</span><span class="p">,</span> <span class="s1">&#39;(cond)&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;condition&#39;</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Return a function that checks if a value matches.</span>
+
+<span class="sd">            In the expression the variable must be written with the first</span>
+<span class="sd">            letter of the label. If the label is &#39;key&#39;, the expression is such</span>
+<span class="sd">            as &#39;k &gt; 0&#39;.</span>
+
+<span class="sd">            :param expression: condition statement</span>
+<span class="sd">            :param variable: name and value pairs</span>
+<span class="sd">                             that is passed to the expression</span>
+<span class="sd">            :param label: name of column</span>
+<span class="sd">            :return: function that takes one argument and returns True/False</span>
+
+<span class="sd">            :Example:</span>
+
+<span class="sd">                &gt;&gt;&gt; f = ColumnType.Condition().evaluate(&#39;v &gt; 0&#39;, {}, &#39;value&#39;)</span>
+<span class="sd">                &gt;&gt;&gt; f(1)</span>
+<span class="sd">                True</span>
+<span class="sd">                &gt;&gt;&gt; f(-1)</span>
+<span class="sd">                False</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">NotApplicable</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+
+            <span class="c1"># Use first letter as symbol</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">label</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">statement</span> <span class="o">=</span> <span class="s1">&#39;lambda </span><span class="si">%s</span><span class="s1">: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">s</span><span class="p">,</span> <span class="n">expression</span><span class="p">)</span>
+            <span class="k">return</span> <span class="nb">eval</span><span class="p">(</span><span class="n">statement</span><span class="p">,</span> <span class="n">variables</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">a</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">String</span><span class="p">(</span><span class="n">_ValueBase</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Strings.</span>
+
+<span class="sd">        Data in this type column is not evaluated as Python literals.</span>
+
+<span class="sd">        The wild card and the non-applicable value is not used for this</span>
+<span class="sd">        column type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">DIRECTIVES</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;(string)&#39;</span><span class="p">,</span> <span class="s1">&#39;(str)&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;string&#39;</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="c1"># No wild card and N/A</span>
+            <span class="k">return</span> <span class="n">expression</span>
+
+    <span class="k">class</span> <span class="nc">Regex</span><span class="p">(</span><span class="n">_SetBase</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Regular expression.</span>
+
+<span class="sd">        The wild card and the non-applicable value is not used for this</span>
+<span class="sd">        column type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">DIRECTIVES</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;(regex)&#39;</span><span class="p">,</span> <span class="s1">&#39;(re)&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;regex&#39;</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">NotApplicable</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+
+            <span class="c1"># Evaluate as Python literals and compile as a regular expression.</span>
+            <span class="k">return</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="nb">eval</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">))</span>
+
+        <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">b</span><span class="p">):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">class</span> <span class="nc">Collection</span><span class="p">(</span><span class="n">_SetBase</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Collection.&quot;&quot;&quot;</span>
+
+        <span class="n">DIRECTIVES</span> <span class="o">=</span> <span class="s1">&#39;(collection), (coll)&#39;</span>
+
+        <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="k">return</span> <span class="s1">&#39;collection&#39;</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Evaluate as a python literal except &#39;*&#39; and &#39;N/A&#39;.&quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span>
+            <span class="k">if</span> <span class="n">expression</span> <span class="o">==</span> <span class="n">NotApplicable</span><span class="o">.</span><span class="n">DIRECTIVE</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">col</span><span class="o">.</span><span class="n">__contains__</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;&#39;</span><span class="si">%s</span><span class="s2">&#39; is not a collection&quot;</span> <span class="o">%</span> <span class="n">expression</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">col</span>
+
+        <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">a</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="c1">#</span>
+    <span class="c1"># Following classes are used in Table.join</span>
+    <span class="c1">#</span>
+
+    <span class="k">class</span> <span class="nc">_NoneType</span><span class="p">(</span><span class="n">Value</span><span class="p">):</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">,</span> <span class="n">variables</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+            <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;Cannot call _NoneType.evaluate&#39;</span>
+
+    <span class="k">class</span> <span class="nc">_ValueJoinValue</span><span class="p">(</span><span class="n">Value</span><span class="p">):</span>
+
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_type</span><span class="p">,</span> <span class="n">right_type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_type</span> <span class="o">=</span> <span class="n">left_type</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_type</span> <span class="o">=</span> <span class="n">right_type</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">get_intercect</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">IntersectionNotFound</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="n">left_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span> <span class="ow">and</span> <span class="n">right_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_type</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+                <span class="c1"># left and right are equivalent</span>
+                <span class="k">return</span> <span class="n">left_value</span>
+
+            <span class="k">raise</span> <span class="n">IntersectionNotFound</span>
+
+    <span class="k">class</span> <span class="nc">_ValueJoinSet</span><span class="p">(</span><span class="n">Value</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_type</span><span class="p">,</span> <span class="n">right_type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_type</span> <span class="o">=</span> <span class="n">left_type</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_type</span> <span class="o">=</span> <span class="n">right_type</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">get_intercect</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">IntersectionNotFound</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="n">left_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span> <span class="ow">and</span> <span class="n">right_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">right_type</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">right_value</span><span class="p">,</span> <span class="n">left_value</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">left_value</span>
+
+            <span class="k">raise</span> <span class="n">IntersectionNotFound</span>
+
+    <span class="k">class</span> <span class="nc">_SetJoinValue</span><span class="p">(</span><span class="n">Value</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_type</span><span class="p">,</span> <span class="n">right_type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_type</span> <span class="o">=</span> <span class="n">left_type</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_type</span> <span class="o">=</span> <span class="n">right_type</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">get_intercect</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">IntersectionNotFound</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="n">left_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span> <span class="ow">and</span> <span class="n">right_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">left_type</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">right_value</span>
+
+            <span class="k">raise</span> <span class="n">IntersectionNotFound</span>
+
+    <span class="k">class</span> <span class="nc">_SetJoinSet</span><span class="p">(</span><span class="n">Condition</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_type</span><span class="p">,</span> <span class="n">right_type</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">left_type</span> <span class="o">=</span> <span class="n">left_type</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">right_type</span> <span class="o">=</span> <span class="n">right_type</span>
+
+        <span class="k">def</span> <span class="nf">evaluate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">WildCard</span><span class="o">.</span><span class="n">get_intercect</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">right_value</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">IntersectionNotFound</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+            <span class="k">if</span> <span class="n">left_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span> <span class="ow">and</span> <span class="n">right_value</span> <span class="ow">is</span> <span class="n">NotApplicable</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">NotApplicable</span>
+
+            <span class="k">return</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">left_type</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">left_value</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="ow">and</span>
+                              <span class="bp">self</span><span class="o">.</span><span class="n">right_type</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">right_value</span><span class="p">,</span> <span class="n">x</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">IntersectionNotFound</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Used for internal controls.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">_WildCard</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;An object that equals with any value.</span>
+
+<span class="sd">    The wild card is represented with &#39;*&#39; in table texts.</span>
+
+<span class="sd">    In the module this object is used from ``WildCard`` variable,</span>
+<span class="sd">    do not create a object directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DIRECTIVE</span> <span class="o">=</span> <span class="s1">&#39;*&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return True for any object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return False for any object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return True for called as a function.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return True for called as a regex object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return True for any object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return &#39;*&#39;.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">DIRECTIVE</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return &#39;WildCard&#39;.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;WildCard&#39;</span>
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_intercect</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">WildCard</span> <span class="ow">and</span> <span class="n">b</span> <span class="ow">is</span> <span class="n">WildCard</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">WildCard</span>
+        <span class="k">if</span> <span class="n">a</span> <span class="ow">is</span> <span class="n">WildCard</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">b</span>
+        <span class="k">if</span> <span class="n">b</span> <span class="ow">is</span> <span class="n">WildCard</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">a</span>
+        <span class="k">raise</span> <span class="n">IntersectionNotFound</span>
+
+
+<span class="n">WildCard</span> <span class="o">=</span> <span class="n">_WildCard</span><span class="p">()</span>
+<span class="sd">&quot;&quot;&quot;The WildCard object. This is unique in the module.&quot;&quot;&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">_NotApplicable</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;The non-applicable value.</span>
+
+<span class="sd">    The non-applicable value is represented with &#39;N/A&#39; in table texts.</span>
+
+<span class="sd">    The object does not equal with any value.</span>
+
+<span class="sd">    In the module this object is used from ``NotApplicable`` variable,</span>
+<span class="sd">    do not create a object directly.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DIRECTIVE</span> <span class="o">=</span> <span class="s1">&#39;N/A&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return False for any object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return True for any object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return False for called as a function.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return False for called as a regex object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return False for any object.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return &#39;N/A&#39;.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">DIRECTIVE</span>
+
+    <span class="k">def</span> <span class="nf">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return &#39;NotApplicable&#39;.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="s1">&#39;NotApplicable&#39;</span>
+
+
+<span class="n">NotApplicable</span> <span class="o">=</span> <span class="n">_NotApplicable</span><span class="p">()</span>
+<span class="sd">&quot;&quot;&quot;The NotApplicable object. This is unique in the module.&quot;&quot;&quot;</span>
+
+
+<span class="k">class</span> <span class="nc">Format</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Format of text tables.&quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">estimate_format</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Estimate the format of the table text.</span>
+
+<span class="sd">        The lines should be removed leading/trailing white lines and indents.</span>
+<span class="sd">        Use strip_lines function.</span>
+
+<span class="sd">        :pram lines: lines of the table text</span>
+<span class="sd">        :return: estimated table format</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">fmt</span> <span class="ow">in</span> <span class="p">(</span><span class="n">Format</span><span class="o">.</span><span class="n">REST_SIMPLE_TABLE</span><span class="p">,</span>
+                    <span class="n">Format</span><span class="o">.</span><span class="n">REST_GRID_TABLE</span><span class="p">,</span>
+                    <span class="n">Format</span><span class="o">.</span><span class="n">MARKDOWN_TABLE</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">fmt</span><span class="o">.</span><span class="n">can_accept</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">fmt</span>
+
+        <span class="k">raise</span> <span class="n">TableMarkupError</span><span class="p">(</span><span class="s1">&#39;The table format is unknown.&#39;</span><span class="p">)</span>
+
+    <span class="k">class</span> <span class="nc">_ReSTTable</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Sckeleton implementation of reStructuredText tables.</span>
+
+<span class="sd">        In this class common logic between _ReSTSimpleTable and _ReSTGridTable</span>
+<span class="sd">        is written. Both of them use the docutils package.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nd">@classmethod</span>
+        <span class="k">def</span> <span class="nf">can_accept</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">line_pattern</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Check if the first/last line match the pattern.&quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+            <span class="n">first_line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">last_line</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line_pattern</span><span class="p">,</span> <span class="n">first_line</span><span class="p">)</span> <span class="ow">and</span>
+                    <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">line_pattern</span><span class="p">,</span> <span class="n">last_line</span><span class="p">)):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="nd">@classmethod</span>
+        <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">parser</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Parse a text table.&quot;&quot;&quot;</span>
+            <span class="c1"># See the document of the docutils module and my experiments in</span>
+            <span class="c1"># test_inline_table.py for the data structure of the below result.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">StringList</span><span class="p">(</span><span class="n">lines</span><span class="p">))</span>
+            <span class="k">except</span> <span class="n">DocutilsTableMarkupError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">TableMarkupError</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+
+            <span class="c1"># === ===</span>
+            <span class="c1">#  a   b   &lt;- these</span>
+            <span class="c1">#  c   d</span>
+            <span class="c1"># === ===</span>
+            <span class="c1">#  e   f</span>
+            <span class="c1"># === ===</span>
+            <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]]</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">&gt;=</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="c1"># === ===</span>
+                <span class="c1">#  a   b</span>
+                <span class="c1">#  c   d   &lt;- these</span>
+                <span class="c1"># === ===</span>
+                <span class="c1">#  e   f</span>
+                <span class="c1"># === ===</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]:</span>
+                    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">cell</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row</span><span class="p">):</span>
+                        <span class="n">labels</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+=</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cell</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span>
+                <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">s</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
+
+            <span class="c1"># === ===</span>
+            <span class="c1">#  a   b</span>
+            <span class="c1"># === ===</span>
+            <span class="c1">#  c   d   &lt;- these</span>
+            <span class="c1">#  e   f   &lt;-</span>
+            <span class="c1"># === ===</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
+                <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="s1">&#39; &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">c</span><span class="p">[</span><span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">r</span><span class="p">])</span>
+
+            <span class="k">return</span> <span class="n">labels</span><span class="p">,</span> <span class="n">rows</span>
+
+    <span class="k">class</span> <span class="nc">_ReSTSimpleTable</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;reStructuredText Simple Table.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">can_accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Judge if the table is estimated to be this format.&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">Format</span><span class="o">.</span><span class="n">_ReSTTable</span><span class="o">.</span><span class="n">can_accept</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="s1">r&#39;^ *[= ]*= *$&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+            <span class="sd">r&quot;&quot;&quot;Parse reStructuredText SimpleTable.</span>
+
+<span class="sd">            :param lines: lines of a table text</span>
+<span class="sd">            :type text: string</span>
+<span class="sd">            :return: tuple of list of labels and list of row values</span>
+
+<span class="sd">            :Example:</span>
+
+<span class="sd">                &gt;&gt;&gt; Format.REST_SIMPLE_TABLE.parse(&#39;&#39;&#39;\</span>
+<span class="sd">                ... ==== ====</span>
+<span class="sd">                ...  A    B</span>
+<span class="sd">                ... ==== ====</span>
+<span class="sd">                ...  a1   b1</span>
+<span class="sd">                ...  a2   b2</span>
+<span class="sd">                ... ==== ====</span>
+<span class="sd">                ... &#39;&#39;&#39;.splitlines())</span>
+<span class="sd">                ([&#39;A&#39;, &#39;B&#39;], [[&#39;a1&#39;, &#39;b1&#39;], [&#39;a2&#39;, &#39;b2&#39;]])</span>
+
+<span class="sd">                &gt;&gt;&gt; Format.REST_SIMPLE_TABLE.parse(&#39;&#39;&#39;\</span>
+<span class="sd">                ... ==== ====</span>
+<span class="sd">                ...  A    B</span>
+<span class="sd">                ... (a)  (b)</span>
+<span class="sd">                ... ==== ====</span>
+<span class="sd">                ...  a1   b1</span>
+<span class="sd">                ...  a2   b2</span>
+<span class="sd">                ... ==== ====</span>
+<span class="sd">                ... &#39;&#39;&#39;.splitlines())</span>
+<span class="sd">                ([&#39;A (a)&#39;, &#39;B (b)&#39;], [[&#39;a1&#39;, &#39;b1&#39;], [&#39;a2&#39;, &#39;b2&#39;]])</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">Format</span><span class="o">.</span><span class="n">_ReSTTable</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">DocutilsSimpleTableParser</span><span class="p">())</span>
+
+    <span class="k">class</span> <span class="nc">_ReSTGridTable</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;reStructuredText Grid Table.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">can_accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Judge if the table is estimated to be this format.&quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">Format</span><span class="o">.</span><span class="n">_ReSTTable</span><span class="o">.</span><span class="n">can_accept</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="s1">r&#39;^ *\+[-\+]*-\+ *$&#39;</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+            <span class="sd">r&quot;&quot;&quot;Parse reStructuredText Grid Table.</span>
+
+<span class="sd">            :Example:</span>
+
+<span class="sd">                &gt;&gt;&gt; Format.REST_GRID_TABLE.parse(&#39;&#39;&#39;\</span>
+<span class="sd">                ... +-----+-----+</span>
+<span class="sd">                ... |  A  |  B  |</span>
+<span class="sd">                ... | (a) | (b) |</span>
+<span class="sd">                ... +=====+=====+</span>
+<span class="sd">                ... | a1  | b1  |</span>
+<span class="sd">                ... +-----+-----+</span>
+<span class="sd">                ... | a2  | b2  |</span>
+<span class="sd">                ... +-----+-----+</span>
+<span class="sd">                ... &#39;&#39;&#39;.splitlines())</span>
+<span class="sd">                ([&#39;A (a)&#39;, &#39;B (b)&#39;], [[&#39;a1&#39;, &#39;b1&#39;], [&#39;a2&#39;, &#39;b2&#39;]])</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="k">return</span> <span class="n">Format</span><span class="o">.</span><span class="n">_ReSTTable</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">DocutilsGridTableParser</span><span class="p">())</span>
+
+    <span class="k">class</span> <span class="nc">_MarkdownTable</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Markdown Table.&quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">can_accept</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+            <span class="sd">&quot;&quot;&quot;Judge if the table is estimated to be this format.&quot;&quot;&quot;</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+            <span class="k">elif</span> <span class="n">re</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="s1">r&#39; *\|? *[-:]+[-| :]*\|? *$&#39;</span><span class="p">,</span> <span class="n">lines</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+                <span class="k">return</span> <span class="kc">True</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="nd">@classmethod</span>
+        <span class="k">def</span> <span class="nf">__split_cell</span><span class="p">(</span><span class="n">cls</span><span class="p">,</span> <span class="n">line</span><span class="p">):</span>
+            <span class="c1"># Remove leading |</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">r&#39;^ *\| *&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+            <span class="c1"># Remove trailing |</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">r&#39; *\| *$&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+            <span class="c1"># Split at |</span>
+            <span class="n">cells</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">r&#39; *\| *&#39;</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+            <span class="c1"># Strip</span>
+            <span class="n">cells</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">cell</span> <span class="ow">in</span> <span class="n">cells</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">cells</span>
+
+        <span class="k">def</span> <span class="nf">parse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+            <span class="sd">r&quot;&quot;&quot;Parse a Markdown table.</span>
+
+<span class="sd">            :Example:</span>
+
+<span class="sd">                &gt;&gt;&gt; Format.MARKDOWN_TABLE.parse(&#39;&#39;&#39;\</span>
+<span class="sd">                ... |  A  |  B  |  C  |</span>
+<span class="sd">                ... |-----|:--- | ---:|</span>
+<span class="sd">                ... |  a  |  b  |  c  |</span>
+<span class="sd">                ... |  1  |  2  |  3  |</span>
+<span class="sd">                ... &#39;&#39;&#39;.splitlines())</span>
+<span class="sd">                ([&#39;A&#39;, &#39;B&#39;, &#39;C&#39;], [[&#39;a&#39;, &#39;b&#39;, &#39;c&#39;], [&#39;1&#39;, &#39;2&#39;, &#39;3&#39;]])</span>
+
+<span class="sd">            &quot;&quot;&quot;</span>
+            <span class="n">header</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__split_cell</span><span class="p">(</span><span class="n">lines</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">body</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">__split_cell</span><span class="p">(</span><span class="n">line</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[</span><span class="mi">2</span><span class="p">:]]</span>
+            <span class="k">return</span> <span class="n">header</span><span class="p">,</span> <span class="n">body</span>
+
+    <span class="n">REST_SIMPLE_TABLE</span> <span class="o">=</span> <span class="n">_ReSTSimpleTable</span><span class="p">()</span>
+    <span class="n">REST_GRID_TABLE</span> <span class="o">=</span> <span class="n">_ReSTGridTable</span><span class="p">()</span>
+    <span class="n">MARKDOWN_TABLE</span> <span class="o">=</span> <span class="n">_MarkdownTable</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="TableMarkupError"><a class="viewcode-back" href="../index.html#inline_table.TableMarkupError">[docs]</a><span class="k">class</span> <span class="nc">TableMarkupError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Exception about a table text format.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2017, Kazuho Fujii.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.5.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
